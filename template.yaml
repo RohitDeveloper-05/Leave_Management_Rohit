@@ -15,7 +15,7 @@ Resources:
     RohitLeaveTable:
         Type: AWS::DynamoDB::Table
         Properties:
-            TableName: LeaveRequestsTableRohit
+            TableName: LeaveRequestsTableRohitCI
             AttributeDefinitions:
                 - AttributeName: leaveRequestId
                   AttributeType: S
@@ -27,7 +27,7 @@ Resources:
     RohitUserTable:
         Type: AWS::DynamoDB::Table
         Properties:
-            TableName: UserTableRohit
+            TableName: UserTableRohitCI
             AttributeDefinitions:
                 - AttributeName: userId
                   AttributeType: S
