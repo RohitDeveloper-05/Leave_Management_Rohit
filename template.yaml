@@ -68,7 +68,7 @@ Resources:
         Properties:
             CodeUri: ./
             Handler: authorizer.authorizerHandler
-            Runtime: nodejs22.x
+            Runtime: nodejs20.x
             Architectures:
                 - x86_64
             Environment:
@@ -93,7 +93,7 @@ Resources:
         Properties:
             CodeUri: ./
             Handler: applyLeave.applyLeaveHandler
-            Runtime: nodejs22.x
+            Runtime: nodejs20.x
             Architectures:
                 - x86_64
             Policies:
@@ -139,7 +139,7 @@ Resources:
         Properties:
             CodeUri: ./
             Handler: sendApprovalEmail.sendApprovalEmailHandler
-            Runtime: nodejs22.x
+            Runtime: nodejs20.x
             Architectures:
                 - x86_64
             Policies:
@@ -172,7 +172,7 @@ Resources:
         Properties:
             CodeUri: ./
             Handler: approveLeave.approveLeaveHandler
-            Runtime: nodejs22.x
+            Runtime: nodejs20.x
             Architectures:
                 - x86_64
             Policies:
@@ -209,7 +209,7 @@ Resources:
         Properties:
             CodeUri: ./
             Handler: updateLeaveStatus.updateLeaveStatusHandler
-            Runtime: nodejs22.x
+            Runtime: nodejs20.x
             Architectures:
                 - x86_64
             Policies:
@@ -239,7 +239,7 @@ Resources:
         Properties:
             CodeUri: ./
             Handler: updateLeaveStatus.updateLeaveStatusHandler
-            Runtime: nodejs22.x
+            Runtime: nodejs20.x
             Architectures:
                 - x86_64
             Policies:
@@ -270,7 +270,7 @@ Resources:
         Properties:
             CodeUri: ./
             Handler: sendUserEmail.sendUserEmailHandler
-            Runtime: nodejs22.x
+            Runtime: nodejs20.x
             Architectures:
                 - x86_64
             Policies:
@@ -302,7 +302,7 @@ Resources:
         Properties:
             CodeUri: ./
             Handler: sendUserEmail.sendUserEmailHandler
-            Runtime: nodejs22.x
+            Runtime: nodejs20.x
             Architectures:
                 - x86_64
             Policies:
