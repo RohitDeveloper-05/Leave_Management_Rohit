@@ -347,7 +347,7 @@ Resources:
     RohLeaveStateMachine:
         Type: AWS::StepFunctions::StateMachine
         Properties:
-            StateMachineName: RohLeaveStateMachine
+            StateMachineName: RohLeaveStateMachineCI
             RoleArn: !GetAtt RohLeaveStateMachineExecutionRole.Arn
             DefinitionString: !Sub |
                 {
