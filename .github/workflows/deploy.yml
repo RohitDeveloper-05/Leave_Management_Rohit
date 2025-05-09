@@ -1,0 +1,68 @@
+name: CI/CD for Roh Leave Manager
+
+on:
+    push:
+        branches:
+            - main
+    pull_request:
+        branches:
+            - main
+
+env:
+    AWS_REGION: ${{ secrets.AWS_REGION }}
+    STACK_NAME: roh-leave-stack
+    S3_BUCKET: roh-leave-sam-artifacts
+    TEMPLATE_FILE: template.yaml
+
+jobs:
+    build-and-deploy:
+        name: Build, Test, Deploy SAM App
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout source code
+              uses: actions/checkout@v3
+
+            - name: Set up Node.js
+              uses: actions/setup-node@v3
+              with:
+                  node-version: 20
+
+            - name: Install dependencies
+              run: npm install
+
+            - name: Run ESLint
+              run: npm run lint
+
+            - name: Run Tests
+              run: npm run test
+
+            - name: Set up AWS credentials
+              uses: aws-actions/configure-aws-credentials@v2
+              with:
+                  aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                  aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                  aws-region: ${{ secrets.AWS_REGION }}
+
+            - name: Install AWS SAM CLI
+              uses: aws-actions/setup-sam@v2
+              with:
+                  version: 1.116.0 # Use latest stable
+
+            - name: Build SAM application
+              run: sam build --use-container
+
+            - name: Package SAM application
+              run: |
+                  sam package \
+                    --s3-bucket $S3_BUCKET \
+                    --output-template-file packaged.yaml
+
+            - name: Deploy SAM application
+              run: |
+                  sam deploy \
+                    --template-file packaged.yaml \
+                    --stack-name $STACK_NAME \
+                    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
+                    --region $AWS_REGION \
+                    --no-fail-on-empty-changeset

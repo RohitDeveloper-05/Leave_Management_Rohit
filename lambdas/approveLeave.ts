@@ -2,11 +2,11 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import * as querystring from 'querystring';
 
 // AWS SDK v3 imports
-import { StepFunctionsClient, SendTaskSuccessCommand } from '@aws-sdk/client-sfn';
+import { SFNClient, SendTaskSuccessCommand } from '@aws-sdk/client-sfn';
 // import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 // import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 
-const stepFunctions = new StepFunctionsClient({});
+const stepFunctions = new SFNClient({});
 // const ddbClient = new DynamoDBClient({});
 // const dynamoDb = DynamoDBDocumentClient.from(ddbClient);
 

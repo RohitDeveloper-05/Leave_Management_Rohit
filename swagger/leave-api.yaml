@@ -1,0 +1,108 @@
+openapi: 3.0.1
+info:
+    title: Leave Management API (Roh)
+    version: 1.0.0
+    description: |
+        AWS SAM “leave-man-Roh” API:
+          • POST /apply-leave  → employee applies  
+          • POST /process-approval  → manager's callback
+servers:
+    - url: https://{restapi_id}.execute-api.{region}.amazonaws.com/{stage}
+      variables:
+          restapi_id:
+              default: YOUR_API_ID
+          region:
+              default: us-east-1
+          stage:
+              default: Prod
+
+components:
+    securitySchemes:
+        RohLeaveAuthorizer:
+            type: apiKey
+            in: header
+            name: Authorization
+            description: Custom Lambda authorizer token
+
+    schemas:
+        LeaveRequest:
+            type: object
+            required: [userId, fromDate, toDate]
+            properties:
+                leaveRequestId:
+                    type: string
+                userId:
+                    type: string
+                fromDate:
+                    type: string
+                    format: date
+                toDate:
+                    type: string
+                    format: date
+                reason:
+                    type: string
+                status:
+                    type: string
+                    enum: [Pending, Approved, Rejected]
+
+        LeaveResponse:
+            type: object
+            properties:
+                leaveRequestId:
+                    type: string
+                status:
+                    type: string
+
+paths:
+    /apply-leave:
+        post:
+            summary: Submit a new leave request
+            security:
+                - RohLeaveAuthorizer: []
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/LeaveRequest'
+            responses:
+                '201':
+                    description: Created
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/LeaveResponse'
+                '400':
+                    description: Validation error
+                '401':
+                    description: Unauthorized
+                '500':
+                    description: Server error
+
+    /process-approval:
+        post:
+            summary: Callback to approve or reject leave
+            description: |
+                This endpoint is called by the email approval link, passing back the Step Functions task token.
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            required: [leaveRequestId, status, taskToken]
+                            properties:
+                                leaveRequestId:
+                                    type: string
+                                status:
+                                    type: string
+                                    enum: [approve, reject]
+                                taskToken:
+                                    type: string
+            responses:
+                '200':
+                    description: Processed
+                '400':
+                    description: Bad request
+                '500':
+                    description: Server error
