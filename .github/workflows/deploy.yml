@@ -52,12 +52,6 @@ jobs:
             - name: Build SAM application
               run: sam build --use-container
 
-            - name: Package SAM application
-              run: |
-                  sam package \
-                    --s3-bucket $S3_BUCKET \
-                    --output-template-file packaged.yaml
-
             - name: Deploy SAM application
               run: |
                   sam deploy \
