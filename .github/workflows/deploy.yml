@@ -66,3 +66,10 @@ jobs:
                     --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
                     --region $AWS_REGION \
                     --no-fail-on-empty-changeset
+
+            - name: Debug S3 bucket
+              run: |
+                  echo "Bucket location:"
+                  aws s3api get-bucket-location --bucket $S3_BUCKET
+                  echo "Try listing objects (or confirm permissions):"
+                  aws s3 ls s3://$S3_BUCKET || true
