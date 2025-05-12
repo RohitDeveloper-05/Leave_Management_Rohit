@@ -49,10 +49,10 @@ jobs:
               with:
                   version: 1.116.0 # Use latest stable
 
+            - run: npm install -g esbuild
+
             - name: Build SAM application
               run: sam build --use-container
-
-            - run: npm install -g esbuild
 
             - name: Deploy SAM application
               run: |
