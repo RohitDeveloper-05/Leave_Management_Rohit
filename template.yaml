@@ -1,432 +1,431 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: >
-    leave-man-Roh
-
-    Sample SAM Template for leave-man-Roh
+Description: |
+  leave-man-Roh
+  Sample SAM Template for leave-man-Roh
 
 Globals:
-    Function:
-        Timeout: 150
-        LoggingConfig:
-            LogFormat: JSON
+  Function:
+    Timeout: 150
+    LoggingConfig:
+      LogFormat: JSON
 
 Resources:
-    RohitLeaveTable:
-        Type: AWS::DynamoDB::Table
-        Properties:
-            TableName: LeaveRequestsTableRohitCI
-            AttributeDefinitions:
-                - AttributeName: leaveRequestId
-                  AttributeType: S
-            KeySchema:
-                - AttributeName: leaveRequestId
-                  KeyType: HASH
-            BillingMode: PAY_PER_REQUEST
+  RohitLeaveTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: LeaveRequestsTableRohitCI
+      AttributeDefinitions:
+        - AttributeName: leaveRequestId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: leaveRequestId
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
 
-    RohitUserTable:
-        Type: AWS::DynamoDB::Table
-        Properties:
-            TableName: UserTableRohitCI
-            AttributeDefinitions:
-                - AttributeName: userId
-                  AttributeType: S
-            KeySchema:
-                - AttributeName: userId
-                  KeyType: HASH
-            BillingMode: PAY_PER_REQUEST
+  RohitUserTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: UserTableRohitCI
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
 
-    RohitLeaveAPI:
-        Type: AWS::Serverless::Api
-        Properties:
-            Name: LeaveManageRoh
-            StageName: Prod
-            Cors: "'*'"
+  RohitLeaveAPI:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: LeaveManageRoh
+      StageName: Prod
+      Cors: '''*'''
+      Auth:
+        DefaultAuthorizer: RohLeaveAuthorizer
+        Authorizers:
+          RohLeaveAuthorizer:
+            FunctionArn: !GetAtt RohLeaveAuthorizerFunction.Arn
+            Identity:
+              Header: Authorization
+
+  RohLeaveAuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+        EntryPoints:
+          - lambdas/authorizer.ts
+        External:
+          - '@aws-sdk/client-dynamodb'
+          - '@aws-sdk/lib-dynamodb'
+          - '@aws-sdk/client-sfn'
+
+    Properties:
+      CodeUri: ./
+      Handler: authorizer.authorizerHandler
+      Runtime: nodejs20.x
+      Architectures:
+        - x86_64
+      Environment:
+        Variables:
+          SECRET_KEY: ROH_LEAVE
+
+  RohLeaveApplyFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+        EntryPoints:
+          - lambdas/applyLeave.ts
+        External:
+          - '@aws-sdk/client-dynamodb'
+          - '@aws-sdk/client-sfn'
+          - '@aws-sdk/lib-dynamodb'
+
+    Properties:
+      CodeUri: ./
+      Handler: applyLeave.applyLeaveHandler
+      Runtime: nodejs20.x
+      Architectures:
+        - x86_64
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RohitUserTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RohitLeaveTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - states:StartExecution
+              Resource: !GetAtt RohLeaveStateMachine.Arn
+      Environment:
+        Variables:
+          USERS_TABLE: !Ref RohitUserTable
+          LEAVE_REQUESTS_TABLE: !Ref RohitLeaveTable
+          SES_EMAIL: rohitsbelgaum@gmail.com
+          STEP_FUNCTION_ARN: !GetAtt RohLeaveStateMachine.Arn
+      Events:
+        ApplyLeave:
+          Type: Api
+          Properties:
+            Path: /apply-leave
+            Method: POST
+            RestApiId: !Ref RohitLeaveAPI
             Auth:
-                DefaultAuthorizer: RohLeaveAuthorizer
-                Authorizers:
-                    RohLeaveAuthorizer:
-                        FunctionArn: !GetAtt RohLeaveAuthorizerFunction.Arn
-                        Identity:
-                            Header: Authorization
+              Authorizer: RohLeaveAuthorizer
 
-    RohLeaveAuthorizerFunction:
-        Type: AWS::Serverless::Function
-        Metadata:
-            BuildMethod: esbuild
-            BuildProperties:
-                Minify: true
-                Target: es2020
-                Sourcemap: true
-                EntryPoints:
-                    - lambdas/authorizer.ts
-                External:
-                    - '@aws-sdk/client-dynamodb'
-                    - '@aws-sdk/lib-dynamodb'
-                    - '@aws-sdk/client-sfn'
+  RohLeaveSendApprovalEmailFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+        EntryPoints:
+          - lambdas/sendApprovalEmail.ts
+        External:
+          - '@aws-sdk/client-ses'
+          - '@aws-sdk/client-dynamodb'
+          - '@aws-sdk/lib-dynamodb'
+    Properties:
+      CodeUri: ./
+      Handler: sendApprovalEmail.sendApprovalEmailHandler
+      Runtime: nodejs20.x
+      Architectures:
+        - x86_64
+      Policies:
+        - AmazonSESFullAccess
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RohitLeaveTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RohitUserTable
+      Environment:
+        Variables:
+          SES_EMAIL: therealrambo08@gmail.com
+          USERS_TABLE: !Ref RohitUserTable
+          LEAVE_REQUESTS_TABLE: !Ref RohitLeaveTable
 
-        Properties:
-            CodeUri: ./
-            Handler: authorizer.authorizerHandler
-            Runtime: nodejs20.x
-            Architectures:
-                - x86_64
-            Environment:
-                Variables:
-                    SECRET_KEY: 'ROH_LEAVE'
+  RohLeaveProcessApprovalFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+        EntryPoints:
+          - lambdas/approveLeave.ts
+        External:
+          - '@aws-sdk/client-sfn'
+          - '@aws-sdk/client-dynamodb'
+          - '@aws-sdk/lib-dynamodb'
 
-    RohLeaveApplyFunction:
-        Type: AWS::Serverless::Function
-        Metadata:
-            BuildMethod: esbuild
-            BuildProperties:
-                Minify: true
-                Target: es2020
-                Sourcemap: true
-                EntryPoints:
-                    - lambdas/applyLeave.ts
-                External:
-                    - '@aws-sdk/client-dynamodb'
-                    - '@aws-sdk/client-sfn'
-                    - '@aws-sdk/lib-dynamodb'
+    Properties:
+      CodeUri: ./
+      Handler: approveLeave.approveLeaveHandler
+      Runtime: nodejs20.x
+      Architectures:
+        - x86_64
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - states:SendTaskSuccess
+                - states:SendTaskFailure
+              Resource: '*'
+      Events:
+        ProcessApproval:
+          Type: Api
+          Properties:
+            Path: /process-approval
+            Method: POST
+            RestApiId: !Ref RohitLeaveAPI
+            Auth:
+              Authorizer: NONE
 
-        Properties:
-            CodeUri: ./
-            Handler: applyLeave.applyLeaveHandler
-            Runtime: nodejs20.x
-            Architectures:
-                - x86_64
-            Policies:
-                - DynamoDBCrudPolicy:
-                      TableName: !Ref RohitUserTable
-                - DynamoDBCrudPolicy:
-                      TableName: !Ref RohitLeaveTable
-                - Statement:
-                      - Effect: Allow
-                        Action:
-                            - states:StartExecution
-                        Resource: !GetAtt RohLeaveStateMachine.Arn
-            Environment:
-                Variables:
-                    USERS_TABLE: !Ref RohitUserTable
-                    LEAVE_REQUESTS_TABLE: !Ref RohitLeaveTable
-                    SES_EMAIL: 'rohitsbelgaum@gmail.com'
-                    STEP_FUNCTION_ARN: !GetAtt RohLeaveStateMachine.Arn
-            Events:
-                ApplyLeave:
-                    Type: Api
-                    Properties:
-                        Path: /apply-leave
-                        Method: POST
-                        RestApiId: !Ref RohitLeaveAPI
-                        Auth:
-                            Authorizer: RohLeaveAuthorizer
+  ApproveLeaveFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+        EntryPoints:
+          - lambdas/updateLeaveStatus.ts
+        External:
+          - '@aws-sdk/client-dynamodb'
+          - '@aws-sdk/lib-dynamodb'
 
-    RohLeaveSendApprovalEmailFunction:
-        Type: AWS::Serverless::Function
-        Metadata:
-            BuildMethod: esbuild
-            BuildProperties:
-                Minify: true
-                Target: es2020
-                Sourcemap: true
-                EntryPoints:
-                    - lambdas/sendApprovalEmail.ts
-                External:
-                    - '@aws-sdk/client-ses'
-                    - '@aws-sdk/client-dynamodb'
-                    - '@aws-sdk/lib-dynamodb'
-        Properties:
-            CodeUri: ./
-            Handler: sendApprovalEmail.sendApprovalEmailHandler
-            Runtime: nodejs20.x
-            Architectures:
-                - x86_64
-            Policies:
-                - AmazonSESFullAccess
-                - DynamoDBCrudPolicy:
-                      TableName: !Ref RohitLeaveTable
-                - DynamoDBCrudPolicy:
-                      TableName: !Ref RohitUserTable
-            Environment:
-                Variables:
-                    SES_EMAIL: 'therealrambo08@gmail.com'
-                    USERS_TABLE: !Ref RohitUserTable
-                    LEAVE_REQUESTS_TABLE: !Ref RohitLeaveTable
+    Properties:
+      CodeUri: ./
+      Handler: updateLeaveStatus.updateLeaveStatusHandler
+      Runtime: nodejs20.x
+      Architectures:
+        - x86_64
+      Policies:
+        - AmazonSESFullAccess
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RohitUserTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RohitLeaveTable
+      Environment:
+        Variables:
+          USERS_TABLE: !Ref RohitUserTable
+          LEAVE_REQUESTS_TABLE: !Ref RohitLeaveTable
 
-    RohLeaveProcessApprovalFunction:
-        Type: AWS::Serverless::Function
-        Metadata:
-            BuildMethod: esbuild
-            BuildProperties:
-                Minify: true
-                Target: es2020
-                Sourcemap: true
-                EntryPoints:
-                    - lambdas/approveLeave.ts
-                External:
-                    - '@aws-sdk/client-sfn'
-                    - '@aws-sdk/client-dynamodb'
-                    - '@aws-sdk/lib-dynamodb'
+  RejectLeaveFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+        EntryPoints:
+          - lambdas/updateLeaveStatus.ts
+        External:
+          - '@aws-sdk/client-dynamodb'
+          - '@aws-sdk/lib-dynamodb'
+    Properties:
+      CodeUri: ./
+      Handler: updateLeaveStatus.updateLeaveStatusHandler
+      Runtime: nodejs20.x
+      Architectures:
+        - x86_64
+      Policies:
+        - AmazonSESFullAccess
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RohitUserTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RohitLeaveTable
+      Environment:
+        Variables:
+          USERS_TABLE: !Ref RohitUserTable
+          LEAVE_REQUESTS_TABLE: !Ref RohitLeaveTable
 
-        Properties:
-            CodeUri: ./
-            Handler: approveLeave.approveLeaveHandler
-            Runtime: nodejs20.x
-            Architectures:
-                - x86_64
-            Policies:
-                - Statement:
-                      - Effect: Allow
-                        Action:
-                            - states:SendTaskSuccess
-                            - states:SendTaskFailure
-                        Resource: '*'
-            Events:
-                ProcessApproval:
-                    Type: Api
-                    Properties:
-                        Path: /process-approval
-                        Method: POST
-                        RestApiId: !Ref RohitLeaveAPI
-                        Auth:
-                            Authorizer: NONE
+  SendApprovalEmailToUser:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+        EntryPoints:
+          - lambdas/sendUserEmail.ts
+        External:
+          - '@aws-sdk/client-ses'
+          - '@aws-sdk/client-dynamodb'
+          - '@aws-sdk/lib-dynamodb'
+    Properties:
+      CodeUri: ./
+      Handler: sendUserEmail.sendUserEmailHandler
+      Runtime: nodejs20.x
+      Architectures:
+        - x86_64
+      Policies:
+        - AmazonSESFullAccess
+        - DynamoDBReadPolicy:
+            TableName: !Ref RohitLeaveTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref RohitUserTable
+      Environment:
+        Variables:
+          SES_EMAIL: therealrambo08@gmail.com
+          USERS_TABLE: !Ref RohitUserTable
+          LEAVE_REQUESTS_TABLE: !Ref RohitLeaveTable
 
-    ApproveLeaveFunction:
-        Type: AWS::Serverless::Function
-        Metadata:
-            BuildMethod: esbuild
-            BuildProperties:
-                Minify: true
-                Target: es2020
-                Sourcemap: true
-                EntryPoints:
-                    - lambdas/updateLeaveStatus.ts
-                External:
-                    - '@aws-sdk/client-dynamodb'
-                    - '@aws-sdk/lib-dynamodb'
+  SendRejectionEmailToUser:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+        EntryPoints:
+          - lambdas/sendUserEmail.ts
+        External:
+          - '@aws-sdk/client-ses'
+          - '@aws-sdk/client-dynamodb'
+          - '@aws-sdk/lib-dynamodb'
+    Properties:
+      CodeUri: ./
+      Handler: sendUserEmail.sendUserEmailHandler
+      Runtime: nodejs20.x
+      Architectures:
+        - x86_64
+      Policies:
+        - AmazonSESFullAccess
+        - DynamoDBReadPolicy:
+            TableName: !Ref RohitLeaveTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref RohitUserTable
+      Environment:
+        Variables:
+          SES_EMAIL: therealrambo08@gmail.com
+          USERS_TABLE: !Ref RohitUserTable
+          LEAVE_REQUESTS_TABLE: !Ref RohitLeaveTable
 
-        Properties:
-            CodeUri: ./
-            Handler: updateLeaveStatus.updateLeaveStatusHandler
-            Runtime: nodejs20.x
-            Architectures:
-                - x86_64
-            Policies:
-                - AmazonSESFullAccess
-                - DynamoDBCrudPolicy:
-                      TableName: !Ref RohitUserTable
-                - DynamoDBCrudPolicy:
-                      TableName: !Ref RohitLeaveTable
-            Environment:
-                Variables:
-                    USERS_TABLE: !Ref RohitUserTable
-                    LEAVE_REQUESTS_TABLE: !Ref RohitLeaveTable
+  RohLeaveStateMachineExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - states.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: RohLeaveStateMachinePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt RohLeaveSendApprovalEmailFunction.Arn
+                  - !GetAtt ApproveLeaveFunction.Arn
+                  - !GetAtt RejectLeaveFunction.Arn
+                  - !GetAtt SendApprovalEmailToUser.Arn
+                  - !GetAtt SendRejectionEmailToUser.Arn
 
-    RejectLeaveFunction:
-        Type: AWS::Serverless::Function
-        Metadata:
-            BuildMethod: esbuild
-            BuildProperties:
-                Minify: true
-                Target: es2020
-                Sourcemap: true
-                EntryPoints:
-                    - lambdas/updateLeaveStatus.ts
-                External:
-                    - '@aws-sdk/client-dynamodb'
-                    - '@aws-sdk/lib-dynamodb'
-        Properties:
-            CodeUri: ./
-            Handler: updateLeaveStatus.updateLeaveStatusHandler
-            Runtime: nodejs20.x
-            Architectures:
-                - x86_64
-            Policies:
-                - AmazonSESFullAccess
-                - DynamoDBCrudPolicy:
-                      TableName: !Ref RohitUserTable
-                - DynamoDBCrudPolicy:
-                      TableName: !Ref RohitLeaveTable
-            Environment:
-                Variables:
-                    USERS_TABLE: !Ref RohitUserTable
-                    LEAVE_REQUESTS_TABLE: !Ref RohitLeaveTable
-
-    SendApprovalEmailToUser:
-        Type: AWS::Serverless::Function
-        Metadata:
-            BuildMethod: esbuild
-            BuildProperties:
-                Minify: true
-                Target: es2020
-                Sourcemap: true
-                EntryPoints:
-                    - lambdas/sendUserEmail.ts
-                External:
-                    - '@aws-sdk/client-ses'
-                    - '@aws-sdk/client-dynamodb'
-                    - '@aws-sdk/lib-dynamodb'
-        Properties:
-            CodeUri: ./
-            Handler: sendUserEmail.sendUserEmailHandler
-            Runtime: nodejs20.x
-            Architectures:
-                - x86_64
-            Policies:
-                - AmazonSESFullAccess
-                - DynamoDBReadPolicy:
-                      TableName: !Ref RohitLeaveTable
-                - DynamoDBReadPolicy:
-                      TableName: !Ref RohitUserTable
-            Environment:
-                Variables:
-                    SES_EMAIL: 'therealrambo08@gmail.com'
-                    USERS_TABLE: !Ref RohitUserTable
-                    LEAVE_REQUESTS_TABLE: !Ref RohitLeaveTable
-
-    SendRejectionEmailToUser:
-        Type: AWS::Serverless::Function
-        Metadata:
-            BuildMethod: esbuild
-            BuildProperties:
-                Minify: true
-                Target: es2020
-                Sourcemap: true
-                EntryPoints:
-                    - lambdas/sendUserEmail.ts
-                External:
-                    - '@aws-sdk/client-ses'
-                    - '@aws-sdk/client-dynamodb'
-                    - '@aws-sdk/lib-dynamodb'
-        Properties:
-            CodeUri: ./
-            Handler: sendUserEmail.sendUserEmailHandler
-            Runtime: nodejs20.x
-            Architectures:
-                - x86_64
-            Policies:
-                - AmazonSESFullAccess
-                - DynamoDBReadPolicy:
-                      TableName: !Ref RohitLeaveTable
-                - DynamoDBReadPolicy:
-                      TableName: !Ref RohitUserTable
-            Environment:
-                Variables:
-                    SES_EMAIL: 'therealrambo08@gmail.com'
-                    USERS_TABLE: !Ref RohitUserTable
-                    LEAVE_REQUESTS_TABLE: !Ref RohitLeaveTable
-
-    RohLeaveStateMachineExecutionRole:
-        Type: AWS::IAM::Role
-        Properties:
-            AssumeRolePolicyDocument:
-                Version: '2012-10-17'
-                Statement:
-                    - Effect: Allow
-                      Principal:
-                          Service:
-                              - states.amazonaws.com
-                      Action:
-                          - sts:AssumeRole
-            Policies:
-                - PolicyName: RohLeaveStateMachinePolicy
-                  PolicyDocument:
-                      Version: '2012-10-17'
-                      Statement:
-                          - Effect: Allow
-                            Action:
-                                - lambda:InvokeFunction
-                            Resource:
-                                - !GetAtt RohLeaveSendApprovalEmailFunction.Arn
-                                - !GetAtt ApproveLeaveFunction.Arn
-                                - !GetAtt RejectLeaveFunction.Arn
-                                - !GetAtt SendApprovalEmailToUser.Arn
-                                - !GetAtt SendRejectionEmailToUser.Arn
-
-    RohLeaveStateMachine:
-        Type: AWS::StepFunctions::StateMachine
-        Properties:
-            StateMachineName: RohLeaveStateMachineCI
-            RoleArn: !GetAtt RohLeaveStateMachineExecutionRole.Arn
-            DefinitionString: !Sub |
-                {
-                  "StartAt": "SendApprovalEmail",
-                  "States": {
-                    "SendApprovalEmail": {
-                      "Type": "Task",
-                      "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
-                      "Parameters": {
-                        "FunctionName": "${RohLeaveSendApprovalEmailFunction.Arn}",
-                        "Payload": {
-                          "leaveRequestId.$": "$.leaveRequestId",
-                          "taskToken.$": "$$.Task.Token"
-                        }
-                      },
-                      "ResultPath": "$.callback",
-                      "Next": "ProcessApproval"
-                    },
-                    "ProcessApproval": {
-                      "Type": "Choice",
-                      "Choices": [
-                        {
-                          "Variable": "$.callback.status",
-                          "StringEquals": "approve",
-                          "Next": "ApproveLeave"
-                        },
-                        {
-                          "Variable": "$.callback.status",
-                          "StringEquals": "reject",
-                          "Next": "RejectLeave"
-                        }
-                      ],
-                      "Default": "HandleError"
-                    },
-                    "ApproveLeave": {
-                      "Type": "Task",
-                      "Resource": "${ApproveLeaveFunction.Arn}",
-                      "Parameters": {
-                        "leaveRequestId.$": "$.leaveRequestId",
-                        "status": "Approved"
-                      },
-                      "Next": "SendApprovalEmailToUser"
-                    },
-                    "SendApprovalEmailToUser": {
-                      "Type": "Task",
-                      "Resource": "${SendApprovalEmailToUser.Arn}",
-                      "Parameters": {
-                        "leaveRequestId.$": "$.leaveRequestId",
-                        "status": "Approved"
-                      },
-                      "End": true
-                    },
-                    "RejectLeave": {
-                      "Type": "Task",
-                      "Resource": "${RejectLeaveFunction.Arn}",
-                      "Parameters": {
-                        "leaveRequestId.$": "$.leaveRequestId",
-                        "status": "Rejected"
-                      },
-                      "Next": "SendRejectionEmailToUser"
-                    },
-                    "SendRejectionEmailToUser": {
-                      "Type": "Task",
-                      "Resource": "${SendRejectionEmailToUser.Arn}",
-                      "Parameters": {
-                        "leaveRequestId.$": "$.leaveRequestId",
-                        "status": "Rejected"
-                      },
-                      "End": true
-                    },
-                    "HandleError": {
-                      "Type": "Fail",
-                      "Error": "InvalidAction",
-                      "Cause": "Invalid action received"
-                    }
-                  }
+  RohLeaveStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      StateMachineName: RohLeaveStateMachineCI
+      RoleArn: !GetAtt RohLeaveStateMachineExecutionRole.Arn
+      DefinitionString: !Sub |
+        {
+          "StartAt": "SendApprovalEmail",
+          "States": {
+            "SendApprovalEmail": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+              "Parameters": {
+                "FunctionName": "${RohLeaveSendApprovalEmailFunction.Arn}",
+                "Payload": {
+                  "leaveRequestId.$": "$.leaveRequestId",
+                  "taskToken.$": "$$.Task.Token"
                 }
+              },
+              "ResultPath": "$.callback",
+              "Next": "ProcessApproval"
+            },
+            "ProcessApproval": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Variable": "$.callback.status",
+                  "StringEquals": "approve",
+                  "Next": "ApproveLeave"
+                },
+                {
+                  "Variable": "$.callback.status",
+                  "StringEquals": "reject",
+                  "Next": "RejectLeave"
+                }
+              ],
+              "Default": "HandleError"
+            },
+            "ApproveLeave": {
+              "Type": "Task",
+              "Resource": "${ApproveLeaveFunction.Arn}",
+              "Parameters": {
+                "leaveRequestId.$": "$.leaveRequestId",
+                "status": "Approved"
+              },
+              "Next": "SendApprovalEmailToUser"
+            },
+            "SendApprovalEmailToUser": {
+              "Type": "Task",
+              "Resource": "${SendApprovalEmailToUser.Arn}",
+              "Parameters": {
+                "leaveRequestId.$": "$.leaveRequestId",
+                "status": "Approved"
+              },
+              "End": true
+            },
+            "RejectLeave": {
+              "Type": "Task",
+              "Resource": "${RejectLeaveFunction.Arn}",
+              "Parameters": {
+                "leaveRequestId.$": "$.leaveRequestId",
+                "status": "Rejected"
+              },
+              "Next": "SendRejectionEmailToUser"
+            },
+            "SendRejectionEmailToUser": {
+              "Type": "Task",
+              "Resource": "${SendRejectionEmailToUser.Arn}",
+              "Parameters": {
+                "leaveRequestId.$": "$.leaveRequestId",
+                "status": "Rejected"
+              },
+              "End": true
+            },
+            "HandleError": {
+              "Type": "Fail",
+              "Error": "InvalidAction",
+              "Cause": "Invalid action received"
+            }
+          }
+        }
 
 Outputs:
-    RohitLeaveAPIEndpoint:
-        Description: 'API Gateway endpoint URL for Leave Management'
-        Value: !Sub 'https://${RohitLeaveAPI}.execute-api.${AWS::Region}.amazonaws.com/Prod'
+  RohitLeaveAPIEndpoint:
+    Description: API Gateway endpoint URL for Leave Management
+    Value: !Sub https://${RohitLeaveAPI}.execute-api.${AWS::Region}.amazonaws.com/Prod

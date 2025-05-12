@@ -51,24 +51,24 @@ export const sendApprovalEmailHandler = async (event: {
 
     // 3. Construct email bodies
     const textBody = `Approve or reject leave ${leaveRequestId} by POST /approveLeave with:
-{
-  "leaveRequestId": "${leaveRequestId}",
-  "action": "approve"|"reject",
-  "taskToken": "${taskToken}"
-}`;
+    {
+    "leaveRequestId": "${leaveRequestId}",
+    "action": "approve"|"reject",
+    "taskToken": "${taskToken}"
+    }`;
 
     const htmlBody = `
-<p>
-${user.name} has requested leave from ${leaveRequest.startDate} to ${leaveRequest.endDate}.
-Please approve or reject the leave request ${leaveRequestId}.
-</p>
-<form method="POST" action="https://pudpige5ff.execute-api.us-east-1.amazonaws.com/prod/approveLeave">
-  <input type="hidden" name="leaveRequestId" value="${leaveRequestId}">
-  <input type="hidden" name="taskToken" value="${taskToken}">
-  <button type="submit" name="action" value="approve" style="background-color: green; color: white;">Approve</button>
-  <button type="submit" name="action" value="reject" style="background-color: red; color: white;">Reject</button>
-</form>
-`;
+    <p>
+    ${user.name} has requested leave from ${leaveRequest.startDate} to ${leaveRequest.endDate}.
+    Please approve or reject the leave request ${leaveRequestId}.
+    </p>
+    <form method="POST" action="https://pudpige5ff.execute-api.us-east-1.amazonaws.com/prod/approveLeave">
+    <input type="hidden" name="leaveRequestId" value="${leaveRequestId}">
+    <input type="hidden" name="taskToken" value="${taskToken}">
+    <button type="submit" name="action" value="approve" style="background-color: green; color: white;">Approve</button>
+    <button type="submit" name="action" value="reject" style="background-color: red; color: white;">Reject</button>
+    </form>
+    `;
 
     console.log('Printing the Source Email', SES_EMAIL);
     console.log('Printing the Destination Email', approver.email);
