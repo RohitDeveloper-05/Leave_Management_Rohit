@@ -15,6 +15,7 @@
         "coverage:serve": "npx live-server coverage/lcov-report --port=9000 --quiet"
     },
     "dependencies": {
+        "esbuild": "^0.25.4",
         "jsonwebtoken": "^9.0.2",
         "uuid": "^11.1.0"
     },
@@ -30,7 +31,6 @@
         "@typescript-eslint/eslint-plugin": "^5.10.2",
         "@typescript-eslint/parser": "^5.10.2",
         "aws-sdk-client-mock": "^4.1.0",
-        "esbuild": "^0.25.4",
         "eslint": "^8.8.0",
         "eslint-config-prettier": "^8.3.0",
         "eslint-plugin-prettier": "^4.0.0",
