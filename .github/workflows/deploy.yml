@@ -12,7 +12,7 @@ env:
     AWS_REGION: ${{ secrets.AWS_REGION }}
     STACK_NAME: roh-leave-stack
     S3_BUCKET: roh-leave-sam-artifacts
-    TEMPLATE_FILE: template.yaml
+    # TEMPLATE_FILE: template.yaml
 
 jobs:
     build-and-deploy:
@@ -55,7 +55,6 @@ jobs:
             - name: Deploy SAM application
               run: |
                   sam deploy \
-                    --template-file $TEMPLATE_FILE \
                     --stack-name $STACK_NAME \
                     --resolve-s3 \
                     --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
